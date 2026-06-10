@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGameStore } from '@/store/gameStore';
 import { useGameRealtime } from '@/hooks/useGameRealtime';
@@ -9,7 +9,8 @@ import GameGrid from '@/components/GameGrid';
 import { Radar, Terminal, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 
-export default function GamePage({ params }: { params: { roomId: string } }) {
+export default function GamePage(props: { params: Promise<{ roomId: string }> }) {
+  const params = use(props.params);
   const router = useRouter();
   const { 
     nickname, phase, turn, playerNumber, winner, logs,
