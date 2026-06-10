@@ -89,10 +89,15 @@ export function useGameRealtime(roomId: string, password?: string) {
           }
         }
       })
-      .subscribe((status) => {
+      .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
           setIsConnected(true);
           newChannel.track({ nickname, playerNumber });
+        } else if (status === 'CHANNEL_ERROR') {
+          addLog('LỖI KẾT NỐI REALTIME: Vui lòng kiểm tra lại URL và Key Supabase!');
+          console.error('Supabase Channel Error:', err);
+        } else if (status === 'TIMED_OUT') {
+          addLog('LỖI: Hết thời gian chờ kết nối Supabase.');
         }
       });
 
