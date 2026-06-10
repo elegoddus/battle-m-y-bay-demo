@@ -50,3 +50,17 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--primary));
 }
+
+@media screen and (orientation: portrait) and (max-width: 896px) {
+  .portrait-warning {
+    display: flex !important;
+  }
+  .app-content {
+    display: none !important;
+  }
+}
+
+.portrait-warning {
+  display: none;
+}
+

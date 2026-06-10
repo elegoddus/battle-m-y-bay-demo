@@ -27,32 +27,32 @@ export default function LobbyPage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh]">
+    <div className="flex flex-col items-center justify-center min-h-[80vh] w-full">
       <div className="flex items-center gap-4 mb-8">
-        <Radar className="w-12 h-12 animate-pulse text-green-500" />
-        <h1 className="text-4xl md:text-6xl font-bold tracking-widest text-green-500 uppercase drop-shadow-[0_0_10px_rgba(0,255,0,0.8)]">
+        <Radar className="w-10 h-10 md:w-16 md:h-16 animate-pulse text-green-500" />
+        <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold tracking-widest text-green-500 uppercase drop-shadow-[0_0_10px_rgba(0,255,0,0.8)] text-center">
           Flane Battle
         </h1>
       </div>
 
-      <div className="w-full max-w-md p-8 border border-green-800 bg-green-950/20 shadow-[0_0_15px_rgba(0,255,0,0.1)] rounded-xl backdrop-blur-sm">
+      <div className="w-full max-w-lg p-6 md:p-10 border border-green-800 bg-green-950/40 shadow-[0_0_15px_rgba(0,255,0,0.2)] rounded-xl backdrop-blur-md">
         <form onSubmit={handleJoin} className="flex flex-col gap-6">
           
           <div className="space-y-2">
-            <label className="text-xs uppercase tracking-wider text-green-400">Danh xưng (Nickname)</label>
+            <label className="text-sm font-bold uppercase tracking-wider text-green-400">Danh xưng (Nickname)</label>
             <input 
               type="text" 
               required
               value={nickname}
               onChange={e => setNickname(e.target.value)}
-              className="w-full bg-black/50 border border-green-800 p-3 rounded focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400 text-green-100 placeholder:text-green-900"
+              className="w-full bg-black border border-green-800 p-4 rounded text-green-100 placeholder:text-green-800/50 focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400 transition-colors"
               placeholder="VD: Maverick"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs uppercase tracking-wider text-green-400">Phe phái</label>
-            <div className="grid grid-cols-4 gap-2">
+            <label className="text-sm font-bold uppercase tracking-wider text-green-400">Phe phái</label>
+            <div className="grid grid-cols-4 gap-3">
               {(['A', 'J', 'R', 'V'] as Faction[]).map(f => (
                 <button
                   key={f}
@@ -64,34 +64,34 @@ export default function LobbyPage() {
                 </button>
               ))}
             </div>
-            <p className="text-xs text-green-700 mt-1 text-center">A: Mỹ | J: Nhật | R: Nga | V: VN</p>
+            <p className="text-xs text-green-700 mt-2 text-center font-mono">A: Mỹ | J: Nhật | R: Nga | V: VN</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4 mt-2">
             <button 
               type="button"
               onClick={() => setIsCreator(true)}
-              className={`py-2 border rounded ${isCreator ? 'bg-green-900/50 border-green-500' : 'border-green-900 text-green-800'}`}
+              className={`py-3 border rounded font-bold uppercase tracking-wider transition-colors ${isCreator ? 'bg-green-800/60 border-green-400 text-green-100 shadow-[0_0_10px_rgba(0,255,0,0.3)]' : 'border-green-900 text-green-800 hover:border-green-700'}`}
             >
               Tạo phòng
             </button>
             <button 
               type="button"
               onClick={() => setIsCreator(false)}
-              className={`py-2 border rounded ${!isCreator ? 'bg-green-900/50 border-green-500' : 'border-green-900 text-green-800'}`}
+              className={`py-3 border rounded font-bold uppercase tracking-wider transition-colors ${!isCreator ? 'bg-green-800/60 border-green-400 text-green-100 shadow-[0_0_10px_rgba(0,255,0,0.3)]' : 'border-green-900 text-green-800 hover:border-green-700'}`}
             >
               Vào phòng
             </button>
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs uppercase tracking-wider text-green-400">Mã phòng (Room ID)</label>
+            <label className="text-sm font-bold uppercase tracking-wider text-green-400">Mã phòng (Room ID)</label>
             <input 
               type="text" 
               required
               value={roomId}
               onChange={e => setRoomId(e.target.value)}
-              className="w-full bg-black/50 border border-green-800 p-3 rounded focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400 text-green-100"
+              className="w-full bg-black border border-green-800 p-4 rounded text-green-100 placeholder:text-green-800/50 focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400 transition-colors font-mono"
               placeholder="VD: delta-force-1"
             />
           </div>

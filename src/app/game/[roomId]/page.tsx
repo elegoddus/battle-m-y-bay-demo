@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGameStore } from '@/store/gameStore';
 import { useGameRealtime } from '@/hooks/useGameRealtime';
 import SetupBoard from '@/components/SetupBoard';
 import GameGrid from '@/components/GameGrid';
-import { Radar, Terminal } from 'lucide-react';
+import { Radar, Terminal, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
+import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 
 export default function GamePage({ params }: { params: { roomId: string } }) {
   const router = useRouter();
@@ -16,6 +17,18 @@ export default function GamePage({ params }: { params: { roomId: string } }) {
   } = useGameStore();
 
   const { isConnected, opponentJoined, opponentReady, myReady, sendReady, sendAttack, opponentRemaining } = useGameRealtime(params.roomId);
+
+  const [showTurnNotification, setShowTurnNotification] = useState(false);
+  const prevTurnRef = useRef(turn);
+
+  useEffect(() => {
+    if (phase === 'playing' && prevTurnRef.current !== turn) {
+      setShowTurnNotification(true);
+      const timer = setTimeout(() => setShowTurnNotification(false), 2000);
+      prevTurnRef.current = turn;
+      return () => clearTimeout(timer);
+    }
+  }, [turn, phase]);
 
   useEffect(() => {
     if (!nickname) {
@@ -104,14 +117,35 @@ export default function GamePage({ params }: { params: { roomId: string } }) {
               </div>
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-8 justify-center items-start">
-              <div className={`transition-opacity duration-300 ${!isMyTurn ? 'opacity-50' : 'opacity-100 shadow-[0_0_30px_rgba(255,0,0,0.1)]'}`}>
-                <GameGrid isOpponent={true} onAttack={handleAttack} />
-              </div>
-              
-              <div className={`transition-opacity duration-300 ${isMyTurn ? 'opacity-50' : 'opacity-100 shadow-[0_0_30px_rgba(0,255,0,0.1)]'}`}>
-                <GameGrid isOpponent={false} />
-              </div>
+            {/* Zoomable Battle Area */}
+            <div className="border border-green-800 bg-black/50 rounded overflow-hidden relative">
+              <TransformWrapper
+                initialScale={1}
+                minScale={0.5}
+                maxScale={3}
+                centerOnInit={true}
+              >
+                {({ zoomIn, zoomOut, resetTransform }) => (
+                  <>
+                    <div className="absolute top-4 right-4 z-10 flex gap-2">
+                      <button onClick={() => zoomIn()} className="p-2 bg-green-900/80 border border-green-500 rounded hover:bg-green-700 text-white"><ZoomIn className="w-5 h-5" /></button>
+                      <button onClick={() => zoomOut()} className="p-2 bg-green-900/80 border border-green-500 rounded hover:bg-green-700 text-white"><ZoomOut className="w-5 h-5" /></button>
+                      <button onClick={() => resetTransform()} className="p-2 bg-green-900/80 border border-green-500 rounded hover:bg-green-700 text-white"><Maximize className="w-5 h-5" /></button>
+                    </div>
+                    <TransformComponent wrapperClass="w-full min-h-[50vh]">
+                      <div className="flex flex-col md:flex-row gap-16 justify-center items-center p-8 min-w-[800px]">
+                        <div className={`transition-opacity duration-300 ${!isMyTurn ? 'opacity-50' : 'opacity-100 shadow-[0_0_30px_rgba(255,0,0,0.1)]'}`}>
+                          <GameGrid isOpponent={true} onAttack={handleAttack} />
+                        </div>
+                        
+                        <div className={`transition-opacity duration-300 ${isMyTurn ? 'opacity-50' : 'opacity-100 shadow-[0_0_30px_rgba(0,255,0,0.1)]'}`}>
+                          <GameGrid isOpponent={false} />
+                        </div>
+                      </div>
+                    </TransformComponent>
+                  </>
+                )}
+              </TransformWrapper>
             </div>
             
             {/* Action Logs */}
@@ -139,6 +173,15 @@ export default function GamePage({ params }: { params: { roomId: string } }) {
             >
               Rời chiến trường
             </button>
+          </div>
+        )}
+
+        {/* Turn Notification Overlay */}
+        {showTurnNotification && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 pointer-events-none">
+            <h1 className={`text-6xl md:text-8xl font-bold uppercase tracking-widest animate-ping ${isMyTurn ? 'text-green-500 drop-shadow-[0_0_20px_rgba(0,255,0,1)]' : 'text-red-500 drop-shadow-[0_0_20px_rgba(255,0,0,1)]'}`}>
+              {isMyTurn ? 'LƯỢT CỦA BẠN' : 'LƯỢT ĐỐI THỦ'}
+            </h1>
           </div>
         )}
       </main>
