@@ -26,10 +26,21 @@ export function useGameRealtime(roomId: string, password?: string) {
     newChannel
       .on('presence', { event: 'sync' }, () => {
         const state = newChannel.presenceState();
-        const players = Object.keys(state);
-        if (players.length > 1) {
-          setOpponentJoined(true);
-        }
+        let oppJoined = false;
+        let oppReady = false;
+        Object.values(state).forEach((presences: any) => {
+          presences.forEach((p: any) => {
+            if (p.playerNumber && p.playerNumber !== playerNumber) {
+              oppJoined = true;
+              if (p.isReady) {
+                oppReady = true;
+              }
+            }
+          });
+        });
+        
+        if (oppJoined) setOpponentJoined(true);
+        if (oppReady) setOpponentReady(true);
       })
       .on('broadcast', { event: 'ready' }, (payload) => {
         if (payload.payload.player !== playerNumber) {
@@ -92,7 +103,7 @@ export function useGameRealtime(roomId: string, password?: string) {
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
           setIsConnected(true);
-          newChannel.track({ nickname, playerNumber });
+          newChannel.track({ nickname, playerNumber, isReady: false });
         } else if (status === 'CHANNEL_ERROR') {
           addLog('LỖI KẾT NỐI REALTIME: Vui lòng kiểm tra lại URL và Key Supabase!');
           console.error('Supabase Channel Error:', err);
@@ -110,7 +121,7 @@ export function useGameRealtime(roomId: string, password?: string) {
 
   // When my planes change, sync remaining
   useEffect(() => {
-    if (!channel || !isConnected) return;
+    if (!channel || !isConnected || myPlanes.length === 0) return;
     const remaining = myPlanes.filter(p => !p.isDestroyed).length;
     channel.send({
       type: 'broadcast',
@@ -118,7 +129,7 @@ export function useGameRealtime(roomId: string, password?: string) {
       payload: { remaining, player: playerNumber }
     });
 
-    if (remaining === 0 && myPlanes.length > 0) {
+    if (remaining === 0) {
       setWinner(playerNumber === 1 ? 2 : 1);
       addLog('Bạn đã thua!');
     }
@@ -135,6 +146,7 @@ export function useGameRealtime(roomId: string, password?: string) {
   const sendReady = () => {
     setMyReady(true);
     if (channel) {
+      channel.track({ nickname, playerNumber, isReady: true });
       channel.send({
         type: 'broadcast',
         event: 'ready',
