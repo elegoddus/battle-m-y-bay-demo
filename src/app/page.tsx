@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Volume2, VolumeX, ChevronRight, RefreshCw } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, ChevronRight, RefreshCw, Image, Sparkles } from 'lucide-react';
 
 interface Sheep {
   url: string;
@@ -14,7 +14,17 @@ export default function Home() {
   const [loading, setLoading] = useState<boolean>(true);
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(true);
+  const [mode, setMode] = useState<1 | 2>(1); // Mode 1: Static, Mode 2: Jumping Animation
   const [stars, setStars] = useState<{ id: number; top: string; left: string; size: string; speedClass: string; delay: string }[]>([]);
+  const [activeSheepUrl, setActiveSheepUrl] = useState<string>('');
+  const [imageLoaded, setImageLoaded] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (currentSheep) {
+      setImageLoaded(false);
+      setActiveSheepUrl(currentSheep.url);
+    }
+  }, [currentSheep]);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -165,9 +175,10 @@ export default function Home() {
     }
 
     if (!isPaused) {
+      const intervalDuration = mode === 2 ? 5000 : 4500; // Mode 2 requires 5 seconds as requested
       timerRef.current = setInterval(() => {
         fetchNextSheep();
-      }, 4500);
+      }, intervalDuration);
     }
 
     return () => {
@@ -175,7 +186,7 @@ export default function Home() {
         clearInterval(timerRef.current);
       }
     };
-  }, [isPaused, isMuted]);
+  }, [isPaused, isMuted, mode]);
 
   const handleManualSkip = () => {
     playSheepSound();
@@ -218,6 +229,13 @@ export default function Home() {
 
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setMode(prev => prev === 1 ? 2 : 1)}
+            className={`p-2 rounded-full border ${mode === 2 ? 'border-indigo-400 text-indigo-200 bg-indigo-900/30' : 'border-indigo-500/15 text-indigo-300/80'} hover:border-indigo-400/35 bg-indigo-950/20 backdrop-blur-md hover:text-indigo-200 hover:scale-105 active:scale-95 transition-all duration-300`}
+          >
+            {mode === 1 ? <Sparkles className="w-3.5 h-3.5" /> : <Image className="w-3.5 h-3.5" />}
+          </button>
+
+          <button
             onClick={() => setIsMuted(prev => !prev)}
             className="p-2 rounded-full border border-indigo-500/15 hover:border-indigo-400/35 bg-indigo-950/20 backdrop-blur-md text-indigo-300/80 hover:text-indigo-200 hover:scale-105 active:scale-95 transition-all duration-300"
           >
@@ -234,30 +252,62 @@ export default function Home() {
       </header>
 
       {/* 2. Main Sheep Display Area (Resized smaller, aspect-square for layout compactness) */}
-      <main className="flex-1 flex flex-col justify-center items-center w-full max-w-xs z-20 my-2">
+      <main className="flex-1 flex flex-col justify-center items-center w-full z-20 my-2">
         <div 
           onClick={handleManualSkip}
-          className="relative main-img-box rounded-2xl overflow-hidden border border-indigo-500/15 bg-indigo-950/10 backdrop-blur-sm shadow-[0_0_40px_rgba(99,102,241,0.08)] hover:shadow-[0_0_50px_rgba(165,180,252,0.12)] hover:border-indigo-400/30 transition-all duration-500 group cursor-pointer"
+          className={`relative rounded-2xl overflow-hidden border border-indigo-500/15 bg-indigo-950/10 backdrop-blur-sm shadow-[0_0_40px_rgba(99,102,241,0.08)] hover:shadow-[0_0_50px_rgba(165,180,252,0.12)] hover:border-indigo-400/30 transition-all duration-500 group cursor-pointer ${
+            mode === 2 ? 'jumping-container-box' : 'main-img-box'
+          }`}
         >
-          {currentSheep ? (
-            <img
-              src={currentSheep.url}
-              alt="sheep"
-              className={`w-full h-full object-cover select-none transition-all duration-700 ease-in-out ${
-                loading ? 'scale-105 blur-sm opacity-80' : 'scale-100 blur-0 opacity-100'
-              }`}
-            />
+          {mode === 1 ? (
+            // Mode 1: Static Image View
+            <>
+              {currentSheep ? (
+                <img
+                  src={currentSheep.url}
+                  alt="sheep"
+                  className={`w-full h-full object-cover select-none transition-all duration-700 ease-in-out ${
+                    loading ? 'scale-105 blur-sm opacity-80' : 'scale-100 blur-0 opacity-100'
+                  }`}
+                />
+              ) : (
+                <div className="w-full h-full flex justify-center items-center bg-indigo-950/10">
+                  <RefreshCw className="w-6 h-6 text-indigo-400/30 animate-spin" />
+                </div>
+              )}
+              {/* Vignette edge blending */}
+              <div className="absolute inset-0 bg-gradient-to-t from-indigo-950/20 via-transparent to-transparent pointer-events-none" />
+            </>
           ) : (
-            <div className="w-full h-full flex justify-center items-center bg-indigo-950/10">
-              <RefreshCw className="w-6 h-6 text-indigo-400/30 animate-spin" />
+            // Mode 2: Jumping Animation View
+            <div className="relative w-full h-full bg-indigo-950/10 overflow-hidden flex flex-col justify-end">
+              {/* Ground layer */}
+              <div className="absolute bottom-0 inset-x-0 h-4 bg-gradient-to-t from-emerald-950/40 to-transparent border-t border-emerald-900/10" />
+              
+              {/* Minecraft Fence in the middle */}
+              <img src="/minecraft_fence.png" alt="fence" className="minecraft-fence-img select-none" />
+              
+              {/* Jumping Cartoon Sheep */}
+              {activeSheepUrl ? (
+                <img
+                  key={activeSheepUrl} // Reset animation key to restart the 5-second jump on sheep change
+                  src={activeSheepUrl}
+                  alt="jumping sheep"
+                  onLoad={() => setImageLoaded(true)}
+                  className={`jumping-sheep-img rounded-xl border border-indigo-400/20 shadow-md select-none transition-opacity duration-300 ${
+                    imageLoaded ? 'animate-sheep-jump opacity-100' : 'opacity-0'
+                  }`}
+                />
+              ) : (
+                <div className="w-full h-full flex justify-center items-center">
+                  <RefreshCw className="w-6 h-6 text-indigo-400/30 animate-spin" />
+                </div>
+              )}
             </div>
           )}
 
-          {/* Vignette edge blending */}
-          <div className="absolute inset-0 bg-gradient-to-t from-indigo-950/20 via-transparent to-transparent pointer-events-none" />
-
           {/* Quick spinner indicator */}
-          <div className="absolute top-2 right-2">
+          <div className="absolute top-2 right-2 z-20">
             {loading && currentSheep && (
               <div className="w-4 h-4 rounded-full border-2 border-indigo-400/30 border-t-indigo-400 animate-spin" />
             )}

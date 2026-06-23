@@ -180,3 +180,121 @@ body {
   height: 100% !important;
   object-fit: cover !important;
 }
+
+/* Mode 2: Sheep running and jumping over fence animation */
+@keyframes sheep-run-jump {
+  0% {
+    left: 115%;
+    bottom: 8%;
+    transform: scaleX(1);
+  }
+  /* Running to the fence */
+  35% {
+    left: 62%;
+    bottom: 8%;
+    transform: scaleX(1);
+  }
+  /* Jumping up */
+  45% {
+    left: 52%;
+    bottom: 38%;
+    transform: scaleX(1) rotate(-15deg);
+  }
+  /* Peak of jump over the Minecraft fence */
+  50% {
+    left: 40%; /* Center adjusted for image dimensions */
+    bottom: 48%;
+    transform: scaleX(1) rotate(0deg);
+  }
+  /* Landing */
+  55% {
+    left: 28%;
+    bottom: 38%;
+    transform: scaleX(1) rotate(15deg);
+  }
+  65% {
+    left: 18%;
+    bottom: 8%;
+    transform: scaleX(1) rotate(0deg);
+  }
+  /* Running offscreen left */
+  100% {
+    left: -35%;
+    bottom: 8%;
+    transform: scaleX(1);
+  }
+}
+
+.animate-sheep-jump {
+  animation: sheep-run-jump 5s linear infinite;
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.animate-spin-slow {
+  animation: spin-slow 10s linear infinite;
+}
+
+/* Sizing overrides for Mode 2 to prevent Tailwind compilation errors */
+.jumping-sheep-img {
+  width: 68px !important;
+  height: 68px !important;
+  object-fit: cover !important;
+  position: absolute !important;
+  z-index: 5 !important;
+}
+
+@media (min-width: 640px) {
+  .jumping-sheep-img {
+    width: 84px !important;
+    height: 84px !important;
+  }
+}
+
+.minecraft-fence-img {
+  width: 52px !important;
+  height: 52px !important;
+  object-fit: contain !important;
+  position: absolute !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  bottom: 8px !important;
+  z-index: 10 !important;
+}
+
+@media (min-width: 640px) {
+  .minecraft-fence-img {
+    width: 68px !important;
+    height: 68px !important;
+    bottom: 10px !important;
+  }
+}
+
+/* Double-sized container for Jumping Mode (Mode 2) */
+.jumping-container-box {
+  width: 310px !important;
+  height: 170px !important;
+}
+
+@media (min-width: 380px) {
+  .jumping-container-box {
+    width: 340px !important;
+    height: 185px !important;
+  }
+}
+
+@media (min-width: 640px) {
+  .jumping-container-box {
+    width: 450px !important;
+    height: 240px !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .jumping-container-box {
+    width: 520px !important;
+    height: 270px !important;
+  }
+}
