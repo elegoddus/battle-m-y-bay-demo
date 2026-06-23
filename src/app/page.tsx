@@ -19,6 +19,31 @@ export default function Home() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const bgMusicRef = useRef<HTMLAudioElement | null>(null);
+
+  // Initialize background sleep music
+  useEffect(() => {
+    const audio = new Audio('/sleep_music.mp3');
+    audio.loop = true;
+    audio.volume = 0.05; // Soft, ambient sleep volume
+    bgMusicRef.current = audio;
+
+    return () => {
+      audio.pause();
+    };
+  }, []);
+
+  // Manage background music playback based on play/pause and mute/unmute states
+  useEffect(() => {
+    const bgMusic = bgMusicRef.current;
+    if (!bgMusic) return;
+
+    if (!isMuted && !isPaused) {
+      bgMusic.play().catch(e => console.log('Background music autoplay block:', e));
+    } else {
+      bgMusic.pause();
+    }
+  }, [isMuted, isPaused]);
 
   // Generate random stars on client mount
   useEffect(() => {
