@@ -17,6 +17,8 @@ export default function Home() {
   const [stars, setStars] = useState<{ id: number; top: string; left: string; size: string; speedClass: string; delay: string }[]>([]);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Generate random stars on client mount
   useEffect(() => {
@@ -39,34 +41,59 @@ export default function Home() {
     setStars(starList);
   }, []);
 
-  // Web Audio chime note
-  const playCozyChime = () => {
+  // Play real sheep bleat sound (cut off at 4 seconds) with 10 random presets across 4 distinct audio files
+  const playSheepSound = () => {
     if (isMuted) return;
     try {
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContext) return;
+      // Prevent overlapping sounds by stopping the previous one instantly
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+      if (audioTimeoutRef.current) {
+        clearTimeout(audioTimeoutRef.current);
+      }
+
+      // 10 distinct sound presets using 4 different audio files and pitch shifts
+      // 5 of these are high-pitched baby lamb sounds (pitch > 1.35 or using the natural baby lamb file)
+      const soundPresets = [
+        // 5 Baby Lamb sounds:
+        { name: 'Baby Lamb 1', file: '/sheep_baa_2.mp3', pitch: 1.05 }, // Natural baby lamb
+        { name: 'Baby Lamb 2', file: '/sheep_baa_2.mp3', pitch: 1.25 }, // Natural baby lamb high
+        { name: 'Baby Lamb 3', file: '/sheep_baa_2.mp3', pitch: 0.92 }, // Natural baby lamb low
+        { name: 'Baby Lamb 4', file: '/sheep_baa.mp3',   pitch: 1.55 }, // Standard baa shifted to lamb
+        { name: 'Baby Lamb 5', file: '/sheep_baa_3.mp3',   pitch: 1.38 }, // "Meh" shifted to lamb
+        
+        // 5 Older Sheep sounds:
+        { name: 'Young Sheep 1', file: '/sheep_baa.mp3',   pitch: 1.18 }, // Standard baa shifted slightly higher
+        { name: 'Young Sheep 2', file: '/sheep_baa_3.mp3',   pitch: 1.00 }, // Natural "Meh" standard
+        { name: 'Adult Sheep 1', file: '/sheep_baa.mp3',   pitch: 1.00 }, // Original adult baa standard
+        { name: 'Adult Sheep 2', file: '/sheep_baa_4.mp3',   pitch: 1.00 }, // Long adult bleat standard
+        { name: 'Deep Ram',      file: '/sheep_baa_4.mp3',   pitch: 0.80 }  // Long adult bleat shifted lower
+      ];
+
+      // Pick a preset randomly
+      const selectedPreset = soundPresets[Math.floor(Math.random() * soundPresets.length)];
+
+      const audio = new Audio(selectedPreset.file);
       
-      const ctx = new AudioContext();
-      const notes = [523.25, 587.33, 659.25, 783.99, 880.00];
-      const randomFrequency = notes[Math.floor(Math.random() * notes.length)];
+      // Set volume slightly lower for higher pitches to keep them cozy and non-piercing
+      audio.volume = selectedPreset.pitch > 1.30 ? 0.20 : 0.26;
       
-      const osc = ctx.createOscillator();
-      const gainNode = ctx.createGain();
+      // Configure playback rate before playing
+      audio.defaultPlaybackRate = selectedPreset.pitch;
+      audio.playbackRate = selectedPreset.pitch;
       
-      osc.connect(gainNode);
-      gainNode.connect(ctx.destination);
+      audioRef.current = audio;
+      audio.play().catch(e => console.log('Audio autoplay block:', e));
       
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(randomFrequency, ctx.currentTime);
-      
-      gainNode.gain.setValueAtTime(0, ctx.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.05, ctx.currentTime + 0.15);
-      gainNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.6);
-      
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 1.8);
+      // Stop after 4 seconds max
+      audioTimeoutRef.current = setTimeout(() => {
+        audio.pause();
+        audio.currentTime = 0;
+      }, 4000);
     } catch (e) {
-      console.warn('Audio Context block/error:', e);
+      console.warn('Audio playback error:', e);
     }
   };
 
@@ -89,9 +116,9 @@ export default function Home() {
           return [nextSheep, ...prev].slice(0, 20); // limit history to 20 items for sizing
         });
 
-        // Trigger chime
+        // Trigger sheep sound
         if (!isManual) {
-          playCozyChime();
+          playSheepSound();
         }
       }
     } catch (error) {
@@ -126,12 +153,12 @@ export default function Home() {
   }, [isPaused, isMuted]);
 
   const handleManualSkip = () => {
-    playCozyChime();
+    playSheepSound();
     fetchNextSheep(true);
   };
 
   const selectFromHistory = (sheep: Sheep) => {
-    playCozyChime();
+    playSheepSound();
     setCurrentSheep(sheep);
     setIsPaused(true);
   };
