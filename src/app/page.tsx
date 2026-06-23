@@ -1,114 +1,252 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useGameStore } from '@/store/gameStore';
-import { Faction } from '@/types/game';
-import { Radar, Plane } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Play, Pause, Volume2, VolumeX, ChevronRight, RefreshCw } from 'lucide-react';
 
-export default function LobbyPage() {
-  const [nickname, setNickname] = useState('');
-  const [roomId, setRoomId] = useState('');
-  const [password, setPassword] = useState('');
-  const [faction, setFaction] = useState<Faction>('A');
-  const [isCreator, setIsCreator] = useState(true);
-  const router = useRouter();
+interface Sheep {
+  url: string;
+  keyword: string;
+}
+
+export default function Home() {
+  const [currentSheep, setCurrentSheep] = useState<Sheep | null>(null);
+  const [history, setHistory] = useState<Sheep[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [isPaused, setIsPaused] = useState<boolean>(false);
+  const [isMuted, setIsMuted] = useState<boolean>(true);
+  const [stars, setStars] = useState<{ id: number; top: string; left: string; size: string; speedClass: string; delay: string }[]>([]);
   
-  const { setLobbyInfo, setPlayerNumber } = useGameStore();
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleJoin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!nickname || !roomId) return;
-    
-    setLobbyInfo(nickname, roomId, password, faction);
-    setPlayerNumber(isCreator ? 1 : 2);
-    
-    router.push(`/game/${roomId}`);
+  // Generate random stars on client mount
+  useEffect(() => {
+    const starList = Array.from({ length: 40 }).map((_, i) => {
+      const sizeRandom = Math.random();
+      const size = sizeRandom < 0.6 ? 'star-sm' : sizeRandom < 0.9 ? 'star-md' : 'star-lg';
+      
+      const speedRandom = Math.random();
+      const speedClass = speedRandom < 0.33 ? 'animate-twinkle-1' : speedRandom < 0.66 ? 'animate-twinkle-2' : 'animate-twinkle-3';
+      
+      return {
+        id: i,
+        top: `${Math.random() * 100}%`,
+        left: `${Math.random() * 100}%`,
+        size,
+        speedClass,
+        delay: `${(Math.random() * 5).toFixed(1)}s`
+      };
+    });
+    setStars(starList);
+  }, []);
+
+  // Web Audio chime note
+  const playCozyChime = () => {
+    if (isMuted) return;
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return;
+      
+      const ctx = new AudioContext();
+      const notes = [523.25, 587.33, 659.25, 783.99, 880.00];
+      const randomFrequency = notes[Math.floor(Math.random() * notes.length)];
+      
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(randomFrequency, ctx.currentTime);
+      
+      gainNode.gain.setValueAtTime(0, ctx.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0.05, ctx.currentTime + 0.15);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.6);
+      
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 1.8);
+    } catch (e) {
+      console.warn('Audio Context block/error:', e);
+    }
+  };
+
+  const fetchNextSheep = async (isManual = false) => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/sheep', { cache: 'no-store' });
+      if (response.ok) {
+        const data = await response.json();
+        const nextSheep: Sheep = {
+          url: data.url,
+          keyword: data.keyword
+        };
+        
+        setCurrentSheep(nextSheep);
+        
+        // Add to history if unique
+        setHistory(prev => {
+          if (prev.some(item => item.url === nextSheep.url)) return prev;
+          return [nextSheep, ...prev].slice(0, 20); // limit history to 20 items for sizing
+        });
+
+        // Trigger chime
+        if (!isManual) {
+          playCozyChime();
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load sheep:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
+    fetchNextSheep();
+  }, []);
+
+  // Interval-based automatic rotation
+  useEffect(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+
+    if (!isPaused) {
+      timerRef.current = setInterval(() => {
+        fetchNextSheep();
+      }, 4500);
+    }
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [isPaused, isMuted]);
+
+  const handleManualSkip = () => {
+    playCozyChime();
+    fetchNextSheep(true);
+  };
+
+  const selectFromHistory = (sheep: Sheep) => {
+    playCozyChime();
+    setCurrentSheep(sheep);
+    setIsPaused(true);
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh] w-full">
-      <div className="flex items-center gap-4 mb-8">
-        <Radar className="w-10 h-10 md:w-16 md:h-16 animate-pulse text-green-500" />
-        <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold tracking-widest text-green-500 uppercase drop-shadow-[0_0_10px_rgba(0,255,0,0.8)] text-center">
-          Flane Battle
-        </h1>
+    <div className="flex-1 flex flex-col justify-between items-center p-4 md:p-6 h-screen max-h-screen min-h-screen relative overflow-hidden select-none">
+      
+      {/* Background Twinkling Sky */}
+      <div className="dream-sky">
+        {stars.map(star => (
+          <div
+            key={star.id}
+            className={`star ${star.size} ${star.speedClass}`}
+            style={{
+              top: star.top,
+              left: star.left,
+              animationDelay: star.delay
+            }}
+          />
+        ))}
       </div>
 
-      <div className="w-full max-w-lg p-6 md:p-10 border border-green-800 bg-green-950/40 shadow-[0_0_15px_rgba(0,255,0,0.2)] rounded-xl backdrop-blur-md">
-        <form onSubmit={handleJoin} className="flex flex-col gap-6">
+      {/* Floating Translucent Ambient Clouds */}
+      <div className="absolute top-[10%] left-[-20%] w-64 h-16 bg-indigo-500/5 rounded-full filter blur-2xl pointer-events-none animate-drift-slow" />
+      <div className="absolute top-[50%] left-[-30%] w-96 h-24 bg-purple-500/5 rounded-full filter blur-3xl pointer-events-none animate-drift-fast" />
+
+      {/* 1. Header with the SINGLE text label "counting shleep" */}
+      <header className="w-full flex justify-between items-center max-w-sm z-20 mt-2">
+        <h1 className="text-lg md:text-xl font-bold tracking-[0.25em] text-indigo-200/90 select-none drop-shadow-[0_0_10px_rgba(165,180,252,0.35)] animate-float">
+          counting shleep
+        </h1>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsMuted(prev => !prev)}
+            className="p-2 rounded-full border border-indigo-500/15 hover:border-indigo-400/35 bg-indigo-950/20 backdrop-blur-md text-indigo-300/80 hover:text-indigo-200 hover:scale-105 active:scale-95 transition-all duration-300"
+          >
+            {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+          </button>
           
-          <div className="space-y-2">
-            <label className="text-sm font-bold uppercase tracking-wider text-green-400">Danh xưng (Nickname)</label>
-            <input 
-              type="text" 
-              required
-              value={nickname}
-              onChange={e => setNickname(e.target.value)}
-              className="w-full bg-black border border-green-800 p-4 rounded text-green-100 placeholder:text-green-800/50 focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400 transition-colors"
-              placeholder="VD: Maverick"
+          <button
+            onClick={() => setIsPaused(prev => !prev)}
+            className="p-2 rounded-full border border-indigo-500/15 hover:border-indigo-400/35 bg-indigo-950/20 backdrop-blur-md text-indigo-300/80 hover:text-indigo-200 hover:scale-105 active:scale-95 transition-all duration-300"
+          >
+            {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
+          </button>
+        </div>
+      </header>
+
+      {/* 2. Main Sheep Display Area (Resized smaller, aspect-square for layout compactness) */}
+      <main className="flex-1 flex flex-col justify-center items-center w-full max-w-xs z-20 my-2">
+        <div 
+          onClick={handleManualSkip}
+          className="relative main-img-box rounded-2xl overflow-hidden border border-indigo-500/15 bg-indigo-950/10 backdrop-blur-sm shadow-[0_0_40px_rgba(99,102,241,0.08)] hover:shadow-[0_0_50px_rgba(165,180,252,0.12)] hover:border-indigo-400/30 transition-all duration-500 group cursor-pointer"
+        >
+          {currentSheep ? (
+            <img
+              src={currentSheep.url}
+              alt="sheep"
+              className={`w-full h-full object-cover select-none transition-all duration-700 ease-in-out ${
+                loading ? 'scale-105 blur-sm opacity-80' : 'scale-100 blur-0 opacity-100'
+              }`}
             />
+          ) : (
+            <div className="w-full h-full flex justify-center items-center bg-indigo-950/10">
+              <RefreshCw className="w-6 h-6 text-indigo-400/30 animate-spin" />
+            </div>
+          )}
+
+          {/* Vignette edge blending */}
+          <div className="absolute inset-0 bg-gradient-to-t from-indigo-950/20 via-transparent to-transparent pointer-events-none" />
+
+          {/* Quick spinner indicator */}
+          <div className="absolute top-2 right-2">
+            {loading && currentSheep && (
+              <div className="w-4 h-4 rounded-full border-2 border-indigo-400/30 border-t-indigo-400 animate-spin" />
+            )}
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-bold uppercase tracking-wider text-green-400">Phe phái</label>
-            <div className="grid grid-cols-4 gap-3">
-              {(['A', 'J', 'R', 'V'] as Faction[]).map(f => (
-                <button
-                  key={f}
-                  type="button"
-                  onClick={() => setFaction(f)}
-                  className={`py-2 flex justify-center border rounded ${faction === f ? 'bg-green-800/50 border-green-400 text-white shadow-[0_0_10px_rgba(0,255,0,0.5)]' : 'border-green-900 text-green-700 hover:border-green-700'}`}
+          {/* Visual hover skip icon */}
+          <div className="absolute inset-0 bg-indigo-950/15 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
+            <div className="p-3 rounded-full bg-indigo-900/40 border border-indigo-300/20 text-indigo-200 scale-90 group-hover:scale-100 transition-transform duration-300 shadow-md">
+              <ChevronRight className="w-5 h-5" />
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* 3. Compact History Bar (No text labels) */}
+      <footer className="w-full max-w-sm z-20 mb-2">
+        {history.length > 0 && (
+          <div className="w-full bg-indigo-950/10 backdrop-blur-md border border-indigo-500/10 rounded-xl p-2.5 shadow-lg">
+            <div className="flex gap-2.5 overflow-x-auto custom-scrollbar py-0.5">
+              {history.map((item, index) => (
+                <div
+                  key={index}
+                  onClick={() => selectFromHistory(item)}
+                  className={`flex-shrink-0 history-thumb-box rounded-lg overflow-hidden border cursor-pointer transition-all duration-300 hover:scale-105 ${
+                    currentSheep?.url === item.url
+                      ? 'border-indigo-400/80 shadow-[0_0_8px_rgba(165,180,252,0.3)] scale-102 opacity-100'
+                      : 'border-transparent opacity-45 hover:opacity-85'
+                  }`}
                 >
-                  <Plane className="w-5 h-5" /> {f}
-                </button>
+                  <img
+                    src={item.url}
+                    alt="history sheep"
+                    className="history-thumb-img select-none"
+                  />
+                </div>
               ))}
             </div>
-            <p className="text-xs text-green-700 mt-2 text-center font-mono">A: Mỹ | J: Nhật | R: Nga | V: VN</p>
           </div>
+        )}
+      </footer>
 
-          <div className="grid grid-cols-2 gap-4 mt-2">
-            <button 
-              type="button"
-              onClick={() => setIsCreator(true)}
-              className={`py-3 border rounded font-bold uppercase tracking-wider transition-colors ${isCreator ? 'bg-green-800/60 border-green-400 text-green-100 shadow-[0_0_10px_rgba(0,255,0,0.3)]' : 'border-green-900 text-green-800 hover:border-green-700'}`}
-            >
-              Tạo phòng
-            </button>
-            <button 
-              type="button"
-              onClick={() => setIsCreator(false)}
-              className={`py-3 border rounded font-bold uppercase tracking-wider transition-colors ${!isCreator ? 'bg-green-800/60 border-green-400 text-green-100 shadow-[0_0_10px_rgba(0,255,0,0.3)]' : 'border-green-900 text-green-800 hover:border-green-700'}`}
-            >
-              Vào phòng
-            </button>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-bold uppercase tracking-wider text-green-400">Mã phòng (Room ID)</label>
-            <input 
-              type="text" 
-              required
-              value={roomId}
-              onChange={e => setRoomId(e.target.value)}
-              className="w-full bg-black border border-green-800 p-4 rounded text-green-100 placeholder:text-green-800/50 focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400 transition-colors font-mono"
-              placeholder="VD: delta-force-1"
-            />
-          </div>
-
-          <button 
-            type="submit"
-            className="mt-4 py-4 w-full bg-green-600 hover:bg-green-500 text-black font-bold uppercase tracking-widest rounded transition-all duration-300 shadow-[0_0_15px_rgba(0,255,0,0.4)] hover:shadow-[0_0_25px_rgba(0,255,0,0.6)]"
-          >
-            {isCreator ? 'Khởi tạo Chiến dịch' : 'Tham gia Chiến dịch'}
-          </button>
-        </form>
-      </div>
-      
-      <div className="mt-8 text-green-800 text-xs text-center max-w-md">
-        <p>CẢNH BÁO MẬT: Kết nối bảo mật chuẩn giao thức Supabase Realtime.</p>
-        <p>Hệ thống tự động đồng bộ tác chiến.</p>
-      </div>
     </div>
   );
 }
